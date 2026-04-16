@@ -130,6 +130,51 @@ class STUNetTrainer_huge_ft(STUNetTrainer_huge):
         self.num_epochs = 1000
 
 
+# ─────────────────────────────────────────────────────────────────────────────
+# Thesis trainers — reduced epochs for tractable training on small datasets
+# From-scratch: 500 epochs (~24 h/fold on RTX 4070 Laptop)
+# Fine-tuning:  250 epochs (~12 h/fold on RTX 4070 Laptop)
+# ─────────────────────────────────────────────────────────────────────────────
+
+class nnUNetTrainer_500(nnUNetTrainer):
+    """Standard nnUNetv2 trainer, 500 epochs. Used as baseline."""
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
+                 device: torch.device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
+        self.num_epochs = 500
+
+
+class STUNetTrainer_small_500(STUNetTrainer_small):
+    """STU-Net small, train from scratch, 500 epochs."""
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
+                 device: torch.device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
+        self.num_epochs = 500
+
+
+class STUNetTrainer_base_500(STUNetTrainer_base):
+    """STU-Net base, train from scratch, 500 epochs."""
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
+                 device: torch.device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
+        self.num_epochs = 500
+
+
+class STUNetTrainer_small_ft_250(STUNetTrainer_small_ft):
+    """STU-Net small, fine-tune from pretrained weights, 250 epochs."""
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
+                 device: torch.device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
+        self.num_epochs = 250
+
+
+class STUNetTrainer_base_ft_250(STUNetTrainer_base_ft):
+    """STU-Net base, fine-tune from pretrained weights, 250 epochs."""
+    def __init__(self, plans: dict, configuration: str, fold: int, dataset_json: dict, unpack_dataset: bool = True,
+                 device: torch.device = torch.device('cuda')):
+        super().__init__(plans, configuration, fold, dataset_json, unpack_dataset, device)
+        self.num_epochs = 250
+
 
 class Decoder(nn.Module):
     def __init__(self):
