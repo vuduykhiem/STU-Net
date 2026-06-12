@@ -15,8 +15,18 @@ def load_pretrained_weights(network, fname, verbose=False):
     nnUNetTrainer.save_checkpoint takes care of that!
 
     """
-    saved_model = torch.load(fname)
-    pretrained_dict = saved_model['network_weights']
+    saved_model = torch.load(fname, weights_only=False)
+    # nnUNetv2 checkpoints use 'network_weights'; nnUNetv1 / STU-Net pretrained
+    # weights use 'state_dict'. Accept both.
+    if 'network_weights' in saved_model:
+        pretrained_dict = saved_model['network_weights']
+    elif 'state_dict' in saved_model:
+        pretrained_dict = saved_model['state_dict']
+    else:
+        raise KeyError(
+            f"Pretrained weights file has neither 'network_weights' nor 'state_dict' key. "
+            f"Found keys: {list(saved_model.keys())}"
+        )
 
     skip_strings_in_pretrained = [
         '.seg_layers.',
@@ -30,16 +40,16 @@ def load_pretrained_weights(network, fname, verbose=False):
         mod = mod._orig_mod
 
     model_dict = mod.state_dict()
-    # verify that all but the segmentation layers have the same shape
+    # Log mismatches instead of asserting — shape mismatches (e.g. first conv
+    # layer when pretrained on 1-channel CT but finetuning on 2-channel input)
+    # are skipped and those layers keep their random initialisation.
     for key, _ in model_dict.items():
         if all([i not in key for i in skip_strings_in_pretrained]):
-            assert key in pretrained_dict, \
-                f"Key {key} is missing in the pretrained model weights. The pretrained weights do not seem to be " \
-                f"compatible with your network."
-            assert model_dict[key].shape == pretrained_dict[key].shape, \
-                f"The shape of the parameters of key {key} is not the same. Pretrained model: " \
-                f"{pretrained_dict[key].shape}; your network: {model_dict[key]}. The pretrained model " \
-                f"does not seem to be compatible with your network."
+            if key not in pretrained_dict:
+                print(f"  [load_pretrained] SKIP (missing in pretrained): {key}")
+            elif model_dict[key].shape != pretrained_dict[key].shape:
+                print(f"  [load_pretrained] SKIP (shape mismatch): {key} "
+                      f"pretrained={pretrained_dict[key].shape} model={model_dict[key].shape}")
 
     # fun fact: in principle this allows loading from parameters that do not cover the entire network. For example pretrained
     # encoders. Not supported by this function though (see assertions above)
@@ -51,7 +61,9 @@ def load_pretrained_weights(network, fname, verbose=False):
     #                    all([i not in k for i in skip_strings_in_pretrained])}
 
     pretrained_dict = {k: v for k, v in pretrained_dict.items()
-                       if k in model_dict.keys() and all([i not in k for i in skip_strings_in_pretrained])}
+                       if k in model_dict.keys()
+                       and model_dict[k].shape == v.shape
+                       and all([i not in k for i in skip_strings_in_pretrained])}
 
     model_dict.update(pretrained_dict)
 
